@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import type { CardData, CardType } from '../types/card';
+import { getDescendantIds } from '../utils/tree';
 
 interface CardFormProps {
   initial?: Partial<CardData>;
+  allCards: CardData[];
   onSave: (data: CardData) => void;
   onCancel: () => void;
 }
 
-export const CardForm: React.FC<CardFormProps> = ({ initial = {}, onSave, onCancel }) => {
+export const CardForm: React.FC<CardFormProps> = ({ initial = {}, allCards, onSave, onCancel }) => {
   const [title, setTitle] = useState(initial.title ?? '');
   const [description, setDescription] = useState(initial.description ?? '');
   const [type, setType] = useState<CardType>(initial.type ?? 'todo');
+  const [parentId, setParentId] = useState(initial.parentId ?? '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,8 +22,16 @@ export const CardForm: React.FC<CardFormProps> = ({ initial = {}, onSave, onCanc
       title,
       description,
       type,
+      parentId: parentId || undefined,
     });
   };
+
+  const invalidParentIds = initial.id ? getDescendantIds(allCards, initial.id) : [];
+  invalidParentIds.push(initial.id ?? ''); // disallow self
+
+  const validParentOptions = allCards.filter(
+    (card) => !invalidParentIds.includes(card.id)
+  );
 
   return (
     <form onSubmit={handleSubmit} className="p-4 space-y-4">
@@ -59,6 +70,24 @@ export const CardForm: React.FC<CardFormProps> = ({ initial = {}, onSave, onCanc
           ))}
         </select>
       </div>
+
+      {type !== 'dream' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Parent Card</label>
+          <select
+            className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+            value={parentId}
+            onChange={(e) => setParentId(e.target.value)}
+          >
+            <option value="">Select parent</option>
+            {validParentOptions.map((card) => (
+              <option key={card.id} value={card.id}>
+                {card.title} ({card.type})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="flex justify-end space-x-2">
         <button
